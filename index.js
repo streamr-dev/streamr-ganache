@@ -12,6 +12,10 @@ const ganache = require("ganache-core")
 const TokenJson = require("./TestToken.json")
 const MarketplaceJson = require("./Marketplace.json")
 
+const port = process.env.GANACHE_PORT || 8545
+const streamrUrl = process.env.EE_URL || "http://localhost:8081/streamr-core" // production: "https://www.streamr.com"
+const log = process.env.QUIET ? (() => {}) : console.log
+
 // private keys corresponding to "testrpc" mnemonic
 const privateKeys = [
     "0x5e98cce00cff5dea6b454889f359a4ec06b9fa6b88e9d69b86de8e1c81887da0",
@@ -26,20 +30,17 @@ const privateKeys = [
     "0x2c326a4c139eced39709b235fffa1fde7c252f3f7b505103f7b251586c35d543",
 ]
 
-const productListURL = "http://localhost:8081/streamr-core/api/v1/products?publicAccess=true"
+log("Starting Ganache")
+const server = ganache.server({
+    mnemonic: "testrpc",
+    logger: { log },
+})
+server.listen(port, start)
 
-const log = console.log
-
-async function start() {
-
-    log("Starting Ganache")
-    const provider = new Web3Provider(ganache.provider({
-        //accounts: [{ secretKey, balance: "0xffffffffffffffffffffffffff" }],
-        mnemonic: "testrpc",
-        logger: { log },
-        blockTime: 1,
-    }))
-    await provider.getNetwork()     // wait until ganache is up and ethers.js ready
+async function start(err, blockchain) {
+    // wait until ganache is up and ethers.js ready
+    const provider = new Web3Provider(server.provider)
+    await provider.getNetwork()
     const wallet = new Wallet(privateKeys[0], provider)
 
     log(`Deploying test token from ${wallet.address}`)
@@ -53,16 +54,23 @@ async function start() {
     const market = await marketDeployTx.deployed()
 
     log("Getting products from E&E")
-    const products = await (await fetch(productListURL)).json()
+    const products = await (await fetch(`${streamrUrl}/api/v1/products?publicAccess=true`)).json()
 
     log(`Adding ${products.length} products to Marketplace`)
     for (p of products) {
-        await market.createProduct(`0x${p.id}`, p.name, streamrUpdaterAddress, p.pricePerSecond, p.priceCurrency == "DATA" ? 0 : 1, p.minimumSubscriptionInSeconds)
+        // free products not supported
+        if (p.pricePerSecond == 0) { continue }
+
+        const tx = await market.createProduct(`0x${p.id}`, p.name, wallet.address, p.pricePerSecond, p.priceCurrency == "DATA" ? 0 : 1, p.minimumSubscriptionInSeconds)
+        await tx.wait(1)
         if (p.state == "NOT_DEPLOYED") {
-            await market.deleteProduct(`0x${p.id}`)
+            const tx2 = await market.deleteProduct(`0x${p.id}`)
+            await tx2.wait(1)
         }
     }
 
+    log("Setting blockTime to 1 for more realistic simulation (instead of instant mining)")
+    blockchain.blockTime = 1
+    blockchain.is_mining_on_interval = true
+    blockchain.mineOnInterval()
 }
-
-start().catch(e => console.error(e, JSON.stringify(e), e.stack))
