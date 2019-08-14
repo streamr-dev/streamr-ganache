@@ -65,4 +65,4 @@ async function start() {
 
 }
 
-start().catch(e => console.error(e, JSON.stringify(e)))
+start().catch(e => console.error(e, JSON.stringify(e), e.stack))
