@@ -2,7 +2,7 @@ FROM node:10.14-alpine
 
 RUN set -xe && \
     apk add --update python build-base && \
-    apk add --no-cache bash git openssh && \
+    apk add --no-cache bash git openssh curl && \
     bash --version && ssh -V && npm -v && node -v
 
 COPY ./package.json /streamr-ganache/app/package.json
