@@ -14,6 +14,7 @@ const MarketplaceJson = require("./Marketplace.json")
 
 const port = process.env.GANACHE_PORT || 8545
 const streamrUrl = process.env.EE_URL || "http://localhost:8081/streamr-core" // production: "https://www.streamr.com"
+const networkId = process.env.NETWORK_ID || "http://localhost:8081/streamr-core" // production: "https://www.streamr.com"
 const log = process.env.QUIET ? (() => {}) : console.log
 
 // private keys corresponding to "testrpc" mnemonic
@@ -33,6 +34,7 @@ const privateKeys = [
 log("Starting Ganache")
 const server = ganache.server({
     mnemonic: "testrpc",
+    network_id: networkId,
     logger: { log },
 })
 server.listen(port, start)

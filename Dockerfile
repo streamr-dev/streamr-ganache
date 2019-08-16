@@ -18,6 +18,7 @@ COPY . .
 
 EXPOSE 8545
 ENV EE_URL http://localhost:8081/streamr-core
+ENV NETWORK_ID 1111
 
 ENTRYPOINT ["node", "index.js"]
 
