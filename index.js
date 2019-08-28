@@ -71,8 +71,8 @@ async function start(err, blockchain) {
         }
     }
 
-    log("Setting blockTime to 1 for more realistic simulation (instead of instant mining)")
-    blockchain.blockTime = 1
+    log("Setting blockTime to 15 for more realistic simulation (instead of instant mining)")
+    blockchain.blockTime = 15
     blockchain.is_mining_on_interval = true
     blockchain.mineOnInterval()
 }
