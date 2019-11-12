@@ -1,5 +1,5 @@
 const fetch = require("node-fetch")
-
+const fs = require("fs")
 const {
     Contract,
     ContractFactory,
@@ -11,11 +11,18 @@ const ganache = require("ganache-core")
 
 const TokenJson = require("./TestToken.json")
 const MarketplaceJson = require("./Marketplace.json")
+const UniswapAdaptor = require("./UniswapAdaptor.json")
+const uniswap_exchange_abi = JSON.parse(fs.readFileSync('./abi/uniswap_exchange.json', 'utf-8'));
+const uniswap_factory_abi = JSON.parse(fs.readFileSync('./abi/uniswap_factory.json', 'utf-8'));
+const uniswap_exchange_bytecode = fs.readFileSync('./bytecode/uniswap_exchange.txt', 'utf-8');
+const uniswap_factory_bytecode = fs.readFileSync('./bytecode/uniswap_factory.txt', 'utf-8');
+
 
 const port = process.env.GANACHE_PORT || 8545
 const streamrUrl = process.env.EE_URL || "http://localhost:8081/streamr-core" // production: "https://www.streamr.com"
 const networkId = process.env.NETWORK_ID || "http://localhost:8081/streamr-core" // production: "https://www.streamr.com"
 const log = process.env.QUIET ? (() => {}) : console.log
+const futureTime = 4449513600;
 
 // private keys corresponding to "testrpc" mnemonic
 const privateKeys = [
@@ -45,15 +52,73 @@ async function start(err, blockchain) {
     await provider.getNetwork()
     const wallet = new Wallet(privateKeys[0], provider)
 
-    log(`Deploying test token from ${wallet.address}`)
+    log(`Deploying test DATAcoin from ${wallet.address}`)
     const tokenDeployer = new ContractFactory(TokenJson.abi, TokenJson.bytecode, wallet)
-    const tokenDeployTx = await tokenDeployer.deploy("Test token", "\ud83e\udd84")
+    const tokenDeployTx = await tokenDeployer.deploy("Test DATAcoin", "\ud83e\udd84")
     const token = await tokenDeployTx.deployed()
 
     log(`Deploying Marketplace contract from ${wallet.address}`)
     const marketDeployer = new ContractFactory(MarketplaceJson.abi, MarketplaceJson.bytecode, wallet)
     const marketDeployTx = await marketDeployer.deploy(token.address, wallet.address)
     const market = await marketDeployTx.deployed()
+
+    log(`Deploying Uniswap Factory contract from ${wallet.address}`)
+    const uniswapFactoryDeployer = new ContractFactory(uniswap_factory_abi, uniswap_factory_bytecode, wallet)
+    const uniswapFactoryDeployTx = await uniswapFactoryDeployer.deploy()
+    const uniswapFactory = await uniswapFactoryDeployTx.deployed()
+    log(`Uniswap factory deployed at ${uniswapFactory.address}`)
+
+    log(`Deploying Uniswap Exchange template contract from ${wallet.address}`)
+    const uniswapExchangeDeployer = new ContractFactory(uniswap_exchange_abi, uniswap_exchange_bytecode, wallet)
+    const uniswapExchangeDeployTx = await uniswapExchangeDeployer.deploy()
+    const uniswapExchangeTemplate = await uniswapExchangeDeployTx.deployed()    
+    log(`Uniswap exchange template deployed at ${uniswapExchangeTemplate.address}`)
+
+    log(`Deploying UniswapAdaptor contract from ${wallet.address}`)
+    const uniswapAdaptorDeployer = new ContractFactory(UniswapAdaptor.abi, UniswapAdaptor.bytecode, wallet)
+    const uniswapAdaptorDeployTx = await uniswapAdaptorDeployer.deploy(market.address, uniswapFactory.address, token.address)
+    const uniswapAdaptor = await uniswapAdaptorDeployTx.deployed()
+    log(`UniswapAdaptor deployed at ${uniswapAdaptor.address}`)
+
+    //another ERC20 that's not datacoin for testing buy with Uniswap
+    log(`Deploying test OTHERcoin from ${wallet.address}`)
+    const tokenDeployer2 = new ContractFactory(TokenJson.abi, TokenJson.bytecode, wallet)
+    const tokenDeployTx2 = await tokenDeployer2.deploy("Test OTHERcoin", "\ud83e\udd84")
+    const token2 = await tokenDeployTx2.deployed()
+
+    log("Init Uniswap factory")
+    await uniswapFactory.initializeFactory(uniswapExchangeTemplate.address)
+    log(`Init Uniswap exchange for DATAcoin token ${token.address}`)
+    await uniswapFactory.createExchange(token.address, {gasLimit: 6000000})
+    log(`Init Uniswap exchange for OTHERcoin token ${token2.address}`)
+    await uniswapFactory.createExchange(token2.address, {gasLimit: 6000000})
+    
+    let datatoken_exchange_address = await uniswapFactory.getExchange(token.address);
+    let othertoken_exchange_address = await uniswapFactory.getExchange(token2.address);
+    let datatokenExchange = new Contract(datatoken_exchange_address, uniswap_exchange_abi, wallet)
+    let othertokenExchange = new Contract(othertoken_exchange_address, uniswap_exchange_abi, wallet)
+    
+    /*
+     wallet starts with 1000 ETH and 100000 of each token
+     we'll add 10 ETH to 
+    */
+    let amt_eth = utils.parseEther("10")
+    //1 ETH ~= 10 DATAcoin
+    let amt_token = utils.parseEther("100")
+    //1 ETH ~= 100 OTHERcoin
+    let amt_token2 = utils.parseEther("1000")
+
+    await token.approve(datatoken_exchange_address, amt_token)
+    await token2.approve(othertoken_exchange_address, amt_token2)
+
+    await datatokenExchange.addLiquidity(amt_token, amt_token, futureTime, {gasLimit: 6000000, value: amt_eth})
+    await othertokenExchange.addLiquidity(amt_token2, amt_token2, futureTime, {gasLimit: 6000000, value: amt_eth})
+    log(`Added liquidity to uniswap exchange: ${utils.formatEther(amt_token)} DATAcoin, ${utils.formatEther(amt_token2)} OTHERcoin`)
+    const ethwei  = utils.parseEther("1")
+    let rate = await datatokenExchange.getTokenToEthInputPrice(ethwei)
+    log(`1 DATAtoken buys ${utils.formatEther(rate)} ETH"`)
+    rate = await othertokenExchange.getTokenToEthInputPrice(ethwei)
+    log(`1 OTHERtoken buys ${utils.formatEther(rate)} ETH"`)
 
     log("Getting products from E&E")
     const products = await (await fetch(`${streamrUrl}/api/v1/products?publicAccess=true`)).json()
