@@ -94,7 +94,9 @@ async function start(err, blockchain) {
     await uniswapFactory.createExchange(token2.address, {gasLimit: 6000000})
     
     let datatoken_exchange_address = await uniswapFactory.getExchange(token.address);
+    log(`DATAcoin traded at Uniswap exchange ${datatoken_exchange_address}`)
     let othertoken_exchange_address = await uniswapFactory.getExchange(token2.address);
+    log(`OTHERcoin traded at Uniswap exchange ${othertoken_exchange_address}`)
     let datatokenExchange = new Contract(datatoken_exchange_address, uniswap_exchange_abi, wallet)
     let othertokenExchange = new Contract(othertoken_exchange_address, uniswap_exchange_abi, wallet)
     
