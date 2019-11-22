@@ -3,7 +3,7 @@ const fs = require("fs")
 const {
     Contract,
     ContractFactory,
-    utils,
+    utils: { computeAddress },
     Wallet,
     providers: { Web3Provider }
 } = require("ethers")
@@ -57,6 +57,12 @@ async function start(err, blockchain) {
     const tokenDeployTx = await tokenDeployer.deploy("Test DATAcoin", "\ud83e\udd84")
     const token = await tokenDeployTx.deployed()
 
+    log("Minting 1000000 tokens to following addresses:")
+    for (const address of privateKeys.map(computeAddress)) {
+        log("    " + address)
+        await token.mint(address, "1000000")
+    }
+
     log(`Deploying Marketplace contract from ${wallet.address}`)
     const marketDeployer = new ContractFactory(MarketplaceJson.abi, MarketplaceJson.bytecode, wallet)
     const marketDeployTx = await marketDeployer.deploy(token.address, wallet.address)
@@ -71,7 +77,7 @@ async function start(err, blockchain) {
     log(`Deploying Uniswap Exchange template contract from ${wallet.address}`)
     const uniswapExchangeDeployer = new ContractFactory(uniswap_exchange_abi, uniswap_exchange_bytecode, wallet)
     const uniswapExchangeDeployTx = await uniswapExchangeDeployer.deploy()
-    const uniswapExchangeTemplate = await uniswapExchangeDeployTx.deployed()    
+    const uniswapExchangeTemplate = await uniswapExchangeDeployTx.deployed()
     log(`Uniswap exchange template deployed at ${uniswapExchangeTemplate.address}`)
 
     log(`Deploying UniswapAdaptor contract from ${wallet.address}`)
@@ -92,23 +98,19 @@ async function start(err, blockchain) {
     await uniswapFactory.createExchange(token.address, {gasLimit: 6000000})
     log(`Init Uniswap exchange for OTHERcoin token ${token2.address}`)
     await uniswapFactory.createExchange(token2.address, {gasLimit: 6000000})
-    
+
     let datatoken_exchange_address = await uniswapFactory.getExchange(token.address);
     log(`DATAcoin traded at Uniswap exchange ${datatoken_exchange_address}`)
     let othertoken_exchange_address = await uniswapFactory.getExchange(token2.address);
     log(`OTHERcoin traded at Uniswap exchange ${othertoken_exchange_address}`)
     let datatokenExchange = new Contract(datatoken_exchange_address, uniswap_exchange_abi, wallet)
     let othertokenExchange = new Contract(othertoken_exchange_address, uniswap_exchange_abi, wallet)
-    
-    /*
-     wallet starts with 1000 ETH and 100000 of each token
-     we'll add 10 ETH to 
-    */
+
+    // wallet starts with 1000 ETH and 100000 of each token
+    // add 10 ETH liquidity to tokens, set initial exchange rates
     let amt_eth = utils.parseEther("10")
-    //1 ETH ~= 10 DATAcoin
-    let amt_token = utils.parseEther("100")
-    //1 ETH ~= 100 OTHERcoin
-    let amt_token2 = utils.parseEther("1000")
+    let amt_token = utils.parseEther("100") // 1 ETH ~= 10 DATAcoin
+    let amt_token2 = utils.parseEther("1000") // 1 ETH ~= 100 OTHERcoin
 
     await token.approve(datatoken_exchange_address, amt_token)
     await token2.approve(othertoken_exchange_address, amt_token2)
