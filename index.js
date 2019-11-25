@@ -19,7 +19,7 @@ const uniswap_factory_bytecode = fs.readFileSync("./bytecode/uniswap_factory.txt
 
 const port = process.env.GANACHE_PORT || 8545
 const streamrUrl = process.env.EE_URL || "http://localhost:8081/streamr-core" // production: "https://www.streamr.com"
-const networkId = process.env.NETWORK_ID || "http://localhost:8081/streamr-core" // production: "https://www.streamr.com"
+const networkId = process.env.NETWORK_ID || "1111" // production: "1"
 const log = process.env.QUIET ? (() => {}) : console.log // eslint-disable-line no-console
 const futureTime = 4449513600
 
