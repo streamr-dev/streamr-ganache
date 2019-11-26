@@ -11,6 +11,7 @@ const ganache = require("ganache-core")
 
 const TokenJson = require("./TestToken.json")
 const MarketplaceJson = require("./Marketplace.json")
+const Marketplace2Json = require("./Marketplace2.json")
 const UniswapAdaptor = require("./UniswapAdaptor.json")
 const uniswap_exchange_abi = JSON.parse(fs.readFileSync("./abi/uniswap_exchange.json", "utf-8"))
 const uniswap_factory_abi = JSON.parse(fs.readFileSync("./abi/uniswap_factory.json", "utf-8"))
@@ -39,6 +40,7 @@ const privateKeys = [
 
 log("Starting Ganache")
 const server = ganache.server({
+//    debug: true,
     mnemonic: "testrpc",
     network_id: networkId,
     logger: { log },
@@ -55,17 +57,24 @@ async function start(err, blockchain) {
     const tokenDeployer = new ContractFactory(TokenJson.abi, TokenJson.bytecode, wallet)
     const tokenDeployTx = await tokenDeployer.deploy("Test DATAcoin", "\ud83e\udd84")
     const token = await tokenDeployTx.deployed()
+    log(`DATACOIN ERC20 deployed at ${token.address}`)
 
     log("Minting 1000000 tokens to following addresses:")
     for (const address of privateKeys.map(computeAddress)) {
         log("    " + address)
         await token.mint(address, "1000000")
     }
+    log(`Deploying Marketplace1 contract from ${wallet.address}`)
+    const marketDeployer1 = new ContractFactory(MarketplaceJson.abi, MarketplaceJson.bytecode, wallet)
+    const marketDeployTx1 = await marketDeployer1.deploy(token.address, wallet.address)
+    const market1 = await marketDeployTx1.deployed()
+    log(`Marketplace1 deployed at ${market1.address}`)
 
-    log(`Deploying Marketplace contract from ${wallet.address}`)
-    const marketDeployer = new ContractFactory(MarketplaceJson.abi, MarketplaceJson.bytecode, wallet)
-    const marketDeployTx = await marketDeployer.deploy(token.address, wallet.address)
-    const market = await marketDeployTx.deployed()
+    log(`Deploying Marketplace2 contract from ${wallet.address}`)
+    const marketDeployer2 = new ContractFactory(Marketplace2Json.abi, Marketplace2Json.bytecode, wallet)
+    const marketDeployTx2 = await marketDeployer2.deploy(token.address, wallet.address, market1.address)
+    const market = await marketDeployTx2.deployed()
+    log(`Marketplace2 deployed at ${market.address}`)
 
     log(`Deploying Uniswap Factory contract from ${wallet.address}`)
     const uniswapFactoryDeployer = new ContractFactory(uniswap_factory_abi, uniswap_factory_bytecode, wallet)
@@ -119,9 +128,30 @@ async function start(err, blockchain) {
     log(`Added liquidity to uniswap exchange: ${formatEther(amt_token)} DATAcoin, ${formatEther(amt_token2)} OTHERcoin`)
     const ethwei  = parseEther("1")
     let rate = await datatokenExchange.getTokenToEthInputPrice(ethwei)
-    log(`1 DATAtoken buys ${formatEther(rate)} ETH"`)
+    log(`1 DATAtoken buys ${formatEther(rate)} ETH`)
     rate = await othertokenExchange.getTokenToEthInputPrice(ethwei)
-    log(`1 OTHERtoken buys ${formatEther(rate)} ETH"`)
+    log(`1 OTHERtoken buys ${formatEther(rate)} ETH`)
+
+    
+    /*
+    //for testing:
+    const pid  = '0x3c4a76bccee345e9bed6ae4182c7926d5e158ab016f74032ae0894adf9cc75bd'
+    log("make test product")
+    await market.createProduct(pid, "test", wallet.address, parseEther(".0001"), 0, 1, false)
+    log("buy test product mkt")
+    await token.approve(market.address, parseEther("1"))
+    await market.buy(pid,11, {gasLimit: 6000000} )
+
+    log("test UA")
+    let convrate  = await uniswapAdaptor.getConversionRate(token.address, token2.address, parseEther("1") )
+    log(`convrate ${convrate}`) 
+    log("test uniswapex")
+    await datatokenExchange.ethToTokenTransferInput(parseEther("1"), futureTime, wallet.address, {gasLimit: 6000000, value: parseEther("1")})
+
+    log("buyWithETH")
+    await uniswapAdaptor.buyWithETH(pid,11, 86400, {gasLimit: 6000000, value: parseEther("1")} )
+    // end testing
+    */
 
     log("Getting products from E&E")
     const products = await (await fetch(`${streamrUrl}/api/v1/products?publicAccess=true`)).json()
@@ -131,7 +161,7 @@ async function start(err, blockchain) {
         // free products not supported
         if (p.pricePerSecond == 0) { continue }
 
-        const tx = await market.createProduct(`0x${p.id}`, p.name, wallet.address, p.pricePerSecond, p.priceCurrency == "DATA" ? 0 : 1, p.minimumSubscriptionInSeconds)
+        const tx = await market.createProduct(`0x${p.id}`, p.name, wallet.address, p.pricePerSecond, p.priceCurrency == "DATA" ? 0 : 1, p.minimumSubscriptionInSeconds, false)
         await tx.wait(1)
         if (p.state == "NOT_DEPLOYED") {
             const tx2 = await market.deleteProduct(`0x${p.id}`)
