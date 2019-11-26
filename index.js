@@ -157,7 +157,7 @@ async function start(err, blockchain) {
     const products = await (await fetch(`${streamrUrl}/api/v1/products?publicAccess=true`)).json()
 
     log(`Adding ${products.length} products to Marketplace`)
-    for (const p of products) {
+    for (p of products) {
         // free products not supported
         if (p.pricePerSecond == 0) { continue }
 
