@@ -59,11 +59,6 @@ async function start(err, blockchain) {
     const token = await tokenDeployTx.deployed()
     log(`DATACOIN ERC20 deployed at ${token.address}`)
 
-    log("Minting 1000000 tokens to following addresses:")
-    for (const address of privateKeys.map(computeAddress)) {
-        log("    " + address)
-        await token.mint(address, "1000000")
-    }
     log(`Deploying Marketplace1 contract from ${wallet.address}`)
     const marketDeployer1 = new ContractFactory(MarketplaceJson.abi, MarketplaceJson.bytecode, wallet)
     const marketDeployTx1 = await marketDeployer1.deploy(token.address, wallet.address)
@@ -99,6 +94,12 @@ async function start(err, blockchain) {
     const tokenDeployer2 = new ContractFactory(TokenJson.abi, TokenJson.bytecode, wallet)
     const tokenDeployTx2 = await tokenDeployer2.deploy("Test OTHERcoin", "\ud83e\udd84")
     const token2 = await tokenDeployTx2.deployed()
+
+    log("Minting 1000000 tokens to following addresses:")
+    for (const address of privateKeys.map(computeAddress)) {
+        log("    " + address)
+        await token.mint(address, "1000000")
+    }
 
     log("Init Uniswap factory")
     await uniswapFactory.initializeFactory(uniswapExchangeTemplate.address)
