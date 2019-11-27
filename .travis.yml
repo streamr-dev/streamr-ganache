@@ -10,19 +10,25 @@ branches:
   - "/^v\\d+\\.\\d+(\\.\\d+)?(-\\S*)?$/"
 env:
   global:
+  - OWNER=streamr
+  - IMAGE_NAME=streamr-ganache
   - secure: lhQSyX+fByfSxA1yRc9hL6+fhBRilncJGTSCbhUQjZoBXKRz60foJ+IhEh2KvckQDsFL7VvmTnoLEqfrabl/+pLPnhmh0tncrlK/HF1qhD6qs1uRXJByTsjADPxcNJxE/KeApbR2/jDX3Y2ygyXnhVjY26teGHjkWbZb/LZNckEoeChwRRULHd5UuCrhgt4ZE6TLcvbiigSY5OEWsSrcO5h2bftCgN+SuTxV8/ChdTrkUbIDz3mEBROM9UNS5ER3J8tPsRNCHvW2dkdjnU0mIlE1uZ5Eid8PZrq21peNHIqqemh0X3+fK8FIrDiuSLAh9+D4sDeFVsz2kGjjUc0V3NUoDFePdBUIlb+GL9UAwAcn3HONjAA1WaiB5+ObgNse4fKIEDhTCAS65WLFvsOU5WJxZlpElrbe+kVXxbfqEe2T7htlT1+s5F/OxVZWoJnG1hjnVpT63J77G1CBIt40LUdD1gk9uNj+i8DBiHY79VOdZEHHON9DMtKj4F4VqTHr+8gSq/P38tRv/n8ahSBd5nC3lx96ienGiMZTqNSNci6b998BYkQVlpHiy0TQ5YDSDQQtALlAfoBrRjm0ZEdFDOJUfI4HWAeZsl2E6yxPybAd+xUswKBtvYxPPCBvvjYhPdOT8X13wtuzaAiHUA1/JA7bvBO9gT0Y/pSdiVJnGHM=
   - secure: Qi+QPGx8olG4Xu5xa4LZPP1yMTiRtyEbXgW8Tr2XBPRQO7DL8wjmC0wgOig0+UdmtMBAoS9QC9qnLl06/Ry6Bppsdg1kdNp71kQLU7BCDz6aJekpatpoUJ2C4KGhNXVcBEX3v7rH1zlUVwDfcrjD2tgH4lRINOd7O8THuo6fA9XiRAXJHImukXtbcoRHjqBZSq7wAHL9IsdR9GaRTx40P6sXoJeRaP/PBw+diZkAO8WSDxaVgdINVyNXRiCfXiGppp4ql1C4tuFfpnERsbEUGrQ+vttOS5x8Xj/5MDpuYts1hKUfxX+dA7C/LYj131/2c0eKvCfNGKhzO/aKV5Ucf5k2+0wWOMAPrH788d3nvthqNY2UJOlq/Qqh7NXQBVy0BEcDCGGzjYXv39vxNJ2YUaJTmLGpwo3FXHDNSm7FXol9oN31Sp0vkT78zgvBemplbB4KsJ1jmWzvJGatqjbP3POCrU6jM7wLg3EsRDLeKyJf+oxgd63ZMD3wCKXAjaKs/0EkTz4R0a8aIBzdC/rDIAQHORy/92Cuta7UGPCHIqUSvrmWr7yf8y97rygmG2OB41yx5eVL7mPnt2e6oxEyRdENM3D7lYpGfynwprT+p9f3pBxtpaztL/E52JvGg1hlTzC/Ng+EZDO85iUegzzFYzCSJkivoBHJIuyUpvib4vA=
 jobs:
   include:
-  - stage: Build docker (dev)
+  - stage: Build docker (Dev/Nightly)
     if: tag IS blank
     install: true
-    env:
-    - OWNER=streamr
-    - IMAGE_NAME=streamr-ganache
-    - TAG=dev
     script:
-    - docker build -t $OWNER/$IMAGE_NAME:$TAG .
+    - docker build -t $OWNER/$IMAGE_NAME:taggit .
     deploy:
     - provider: script
-      script: bash .travis_scripts/deploy_docker.sh staging
+      script: bash .travis_scripts/deploy_docker.sh dev
+  - stage: Build docker (Production)
+    if: tag IS present
+    install: true
+    script:
+    - docker build -t $OWNER/$IMAGE_NAME:taggit .
+    deploy:
+    - provider: script
+      script: bash .travis_scripts/deploy_docker.sh production
