@@ -138,7 +138,7 @@ async function start(err, blockchain) {
     //for testing:
     const pid  = '0x3c4a76bccee345e9bed6ae4182c7926d5e158ab016f74032ae0894adf9cc75bd'
     log("make test product")
-    await market.createProduct(pid, "test", wallet.address, parseEther(".0001"), 0, 1, false)
+    await market.createProduct(pid, "test", wallet.address, parseEther(".0001"), 0, 1)
     log("buy test product mkt")
     await token.approve(market.address, parseEther("1"))
     await market.buy(pid,11, {gasLimit: 6000000} )
@@ -153,6 +153,7 @@ async function start(err, blockchain) {
     await uniswapAdaptor.buyWithETH(pid,11, 86400, {gasLimit: 6000000, value: parseEther("1")} )
     // end testing
     */
+    
 
     log("Getting products from E&E")
     const products = await (await fetch(`${streamrUrl}/api/v1/products?publicAccess=true`)).json()
@@ -162,7 +163,7 @@ async function start(err, blockchain) {
         // free products not supported
         if (p.pricePerSecond == 0) { continue }
 
-        const tx = await market.createProduct(`0x${p.id}`, p.name, wallet.address, p.pricePerSecond, p.priceCurrency == "DATA" ? 0 : 1, p.minimumSubscriptionInSeconds, false)
+        const tx = await market.createProduct(`0x${p.id}`, p.name, wallet.address, p.pricePerSecond, p.priceCurrency == "DATA" ? 0 : 1, p.minimumSubscriptionInSeconds)
         await tx.wait(1)
         if (p.state == "NOT_DEPLOYED") {
             const tx2 = await market.deleteProduct(`0x${p.id}`)
