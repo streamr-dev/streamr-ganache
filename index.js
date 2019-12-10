@@ -102,11 +102,14 @@ async function start(err, blockchain) {
     }
 
     log("Init Uniswap factory")
-    await uniswapFactory.initializeFactory(uniswapExchangeTemplate.address)
+    let tx = await uniswapFactory.initializeFactory(uniswapExchangeTemplate.address)
+    await tx.wait()
     log(`Init Uniswap exchange for DATAcoin token ${token.address}`)
-    await uniswapFactory.createExchange(token.address, {gasLimit: 6000000})
+    tx = await uniswapFactory.createExchange(token.address, {gasLimit: 6000000})
+    await tx.wait()
     log(`Init Uniswap exchange for OTHERcoin token ${token2.address}`)
-    await uniswapFactory.createExchange(token2.address, {gasLimit: 6000000})
+    tx = await uniswapFactory.createExchange(token2.address, {gasLimit: 6000000})
+    await tx.wait()
 
     let datatoken_exchange_address = await uniswapFactory.getExchange(token.address)
     log(`DATAcoin traded at Uniswap exchange ${datatoken_exchange_address}`)
@@ -121,11 +124,15 @@ async function start(err, blockchain) {
     let amt_token = parseEther("100") // 1 ETH ~= 10 DATAcoin
     let amt_token2 = parseEther("1000") // 1 ETH ~= 100 OTHERcoin
 
-    await token.approve(datatoken_exchange_address, amt_token)
-    await token2.approve(othertoken_exchange_address, amt_token2)
+    tx = await token.approve(datatoken_exchange_address, amt_token)
+    await tx.wait()
+    tx = await token2.approve(othertoken_exchange_address, amt_token2)
+    await tx.wait()
 
-    await datatokenExchange.addLiquidity(amt_token, amt_token, futureTime, {gasLimit: 6000000, value: amt_eth})
-    await othertokenExchange.addLiquidity(amt_token2, amt_token2, futureTime, {gasLimit: 6000000, value: amt_eth})
+    tx = await datatokenExchange.addLiquidity(amt_token, amt_token, futureTime, {gasLimit: 6000000, value: amt_eth})
+    await tx.wait()
+    tx = await othertokenExchange.addLiquidity(amt_token2, amt_token2, futureTime, {gasLimit: 6000000, value: amt_eth})
+    await tx.wait()
     log(`Added liquidity to uniswap exchange: ${formatEther(amt_token)} DATAcoin, ${formatEther(amt_token2)} OTHERcoin`)
     const ethwei  = parseEther("1")
     let rate = await datatokenExchange.getTokenToEthInputPrice(ethwei)
