@@ -102,11 +102,14 @@ async function start(err, blockchain) {
     }
 
     log("Init Uniswap factory")
-    await uniswapFactory.initializeFactory(uniswapExchangeTemplate.address)
+    let tx = await uniswapFactory.initializeFactory(uniswapExchangeTemplate.address)
+    await tx.wait()
     log(`Init Uniswap exchange for DATAcoin token ${token.address}`)
-    await uniswapFactory.createExchange(token.address, {gasLimit: 6000000})
+    tx = await uniswapFactory.createExchange(token.address, {gasLimit: 6000000})
+    await tx.wait()
     log(`Init Uniswap exchange for OTHERcoin token ${token2.address}`)
-    await uniswapFactory.createExchange(token2.address, {gasLimit: 6000000})
+    tx = await uniswapFactory.createExchange(token2.address, {gasLimit: 6000000})
+    await tx.wait()
 
     let datatoken_exchange_address = await uniswapFactory.getExchange(token.address)
     log(`DATAcoin traded at Uniswap exchange ${datatoken_exchange_address}`)
@@ -121,11 +124,15 @@ async function start(err, blockchain) {
     let amt_token = parseEther("100") // 1 ETH ~= 10 DATAcoin
     let amt_token2 = parseEther("1000") // 1 ETH ~= 100 OTHERcoin
 
-    await token.approve(datatoken_exchange_address, amt_token)
-    await token2.approve(othertoken_exchange_address, amt_token2)
+    tx = await token.approve(datatoken_exchange_address, amt_token)
+    await tx.wait()
+    tx = await token2.approve(othertoken_exchange_address, amt_token2)
+    await tx.wait()
 
-    await datatokenExchange.addLiquidity(amt_token, amt_token, futureTime, {gasLimit: 6000000, value: amt_eth})
-    await othertokenExchange.addLiquidity(amt_token2, amt_token2, futureTime, {gasLimit: 6000000, value: amt_eth})
+    tx = await datatokenExchange.addLiquidity(amt_token, amt_token, futureTime, {gasLimit: 6000000, value: amt_eth})
+    await tx.wait()
+    tx = await othertokenExchange.addLiquidity(amt_token2, amt_token2, futureTime, {gasLimit: 6000000, value: amt_eth})
+    await tx.wait()
     log(`Added liquidity to uniswap exchange: ${formatEther(amt_token)} DATAcoin, ${formatEther(amt_token2)} OTHERcoin`)
     const ethwei  = parseEther("1")
     let rate = await datatokenExchange.getTokenToEthInputPrice(ethwei)
@@ -138,7 +145,7 @@ async function start(err, blockchain) {
     //for testing:
     const pid  = '0x3c4a76bccee345e9bed6ae4182c7926d5e158ab016f74032ae0894adf9cc75bd'
     log("make test product")
-    await market.createProduct(pid, "test", wallet.address, parseEther(".0001"), 0, 1, false)
+    await market.createProduct(pid, "test", wallet.address, parseEther(".0001"), 0, 1)
     log("buy test product mkt")
     await token.approve(market.address, parseEther("1"))
     await market.buy(pid,11, {gasLimit: 6000000} )
@@ -153,6 +160,7 @@ async function start(err, blockchain) {
     await uniswapAdaptor.buyWithETH(pid,11, 86400, {gasLimit: 6000000, value: parseEther("1")} )
     // end testing
     */
+    
 
     log("Getting products from E&E")
     const products = await (await fetch(`${streamrUrl}/api/v1/products?publicAccess=true`)).json()
@@ -162,7 +170,7 @@ async function start(err, blockchain) {
         // free products not supported
         if (p.pricePerSecond == 0) { continue }
 
-        const tx = await market.createProduct(`0x${p.id}`, p.name, wallet.address, p.pricePerSecond, p.priceCurrency == "DATA" ? 0 : 1, p.minimumSubscriptionInSeconds, false)
+        const tx = await market.createProduct(`0x${p.id}`, p.name, wallet.address, p.pricePerSecond, p.priceCurrency == "DATA" ? 0 : 1, p.minimumSubscriptionInSeconds)
         await tx.wait(1)
         if (p.state == "NOT_DEPLOYED") {
             const tx2 = await market.deleteProduct(`0x${p.id}`)
