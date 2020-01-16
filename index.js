@@ -20,12 +20,12 @@ const uniswap_factory_bytecode = fs.readFileSync("./bytecode/uniswap_factory.txt
 
 const port = process.env.GANACHE_PORT || 8545
 const streamrUrl = process.env.EE_URL || "http://localhost:8081/streamr-core" // production: "https://www.streamr.com"
-const networkId = process.env.NETWORK_ID || "1111" // production: "1"
+const network_id = process.env.NETWORK_ID || "1111" // production: "1". Underscore in name because ganache.server wants it
 const log = process.env.QUIET ? (() => {}) : console.log // eslint-disable-line no-console
 const futureTime = 4449513600
 
 // private keys corresponding to "testrpc" mnemonic
-const privateKeys = [
+const testrpcKeys = [
     "0x5e98cce00cff5dea6b454889f359a4ec06b9fa6b88e9d69b86de8e1c81887da0",
     "0xe5af7834455b7239881b85be89d905d6881dcb4751063897f12be1b0dd546bdb",
     "0x4059de411f15511a85ce332e7a428f36492ab4e87c7830099dadbf130f1896ae",
@@ -38,11 +38,18 @@ const privateKeys = [
     "0x2c326a4c139eced39709b235fffa1fde7c252f3f7b505103f7b251586c35d543",
 ]
 
+// 10000 keys for running integration tests in parallel, each with its own private key
+const dummyKeys = Array(10000).fill(0).map((x, i) => "0x100000000000000000000000000000000000000000000000000000000000" + String(i).padStart(4, "0"))
+
+// give everyone 100 ETH to play with
+const balance = parseEther("100").toHexString()
+
+const accounts = testrpcKeys.concat(dummyKeys).map(secretKey => ({secretKey, balance}))
+
 log("Starting Ganache")
 const server = ganache.server({
-//    debug: true,
-    mnemonic: "testrpc",
-    network_id: networkId,
+    accounts,
+    network_id,
     logger: { log },
 })
 server.listen(port, start)
@@ -51,7 +58,7 @@ async function start(err, blockchain) {
     // wait until ganache is up and ethers.js ready
     const provider = new Web3Provider(server.provider)
     await provider.getNetwork()
-    const wallet = new Wallet(privateKeys[0], provider)
+    const wallet = new Wallet(testrpcKeys[0], provider)
 
     log(`Deploying test DATAcoin from ${wallet.address}`)
     const tokenDeployer = new ContractFactory(TokenJson.abi, TokenJson.bytecode, wallet)
@@ -96,9 +103,9 @@ async function start(err, blockchain) {
     const token2 = await tokenDeployTx2.deployed()
 
     log("Minting 1000000 tokens to following addresses:")
-    for (const address of privateKeys.map(computeAddress)) {
+    for (const address of testrpcKeys.map(computeAddress)) {
         log("    " + address)
-        await token.mint(address, "1000000")
+        await token.mint(address, parseEther("1000000"))
     }
 
     log("Init Uniswap factory")
@@ -139,28 +146,6 @@ async function start(err, blockchain) {
     log(`1 DATAtoken buys ${formatEther(rate)} ETH`)
     rate = await othertokenExchange.getTokenToEthInputPrice(ethwei)
     log(`1 OTHERtoken buys ${formatEther(rate)} ETH`)
-
-    
-    /*
-    //for testing:
-    const pid  = '0x3c4a76bccee345e9bed6ae4182c7926d5e158ab016f74032ae0894adf9cc75bd'
-    log("make test product")
-    await market.createProduct(pid, "test", wallet.address, parseEther(".0001"), 0, 1)
-    log("buy test product mkt")
-    await token.approve(market.address, parseEther("1"))
-    await market.buy(pid,11, {gasLimit: 6000000} )
-
-    log("test UA")
-    let convrate  = await uniswapAdaptor.getConversionRate(token.address, token2.address, parseEther("1") )
-    log(`convrate ${convrate}`) 
-    log("test uniswapex")
-    await datatokenExchange.ethToTokenTransferInput(parseEther("1"), futureTime, wallet.address, {gasLimit: 6000000, value: parseEther("1")})
-
-    log("buyWithETH")
-    await uniswapAdaptor.buyWithETH(pid,11, 86400, {gasLimit: 6000000, value: parseEther("1")} )
-    // end testing
-    */
-    
 
     log("Getting products from E&E")
     const products = await (await fetch(`${streamrUrl}/api/v1/products?publicAccess=true`)).json()

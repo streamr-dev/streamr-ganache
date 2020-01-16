@@ -10,7 +10,7 @@ COPY ./package-lock.json /streamr-ganache/package-lock.json
 
 WORKDIR /streamr-ganache/app
 
-RUN npm install && \
+RUN npm ci && \
     apk del python build-base git && \
     rm -rf /var/cache/apk/*
 
