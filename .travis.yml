@@ -18,6 +18,8 @@ jobs:
   include:
   - stage: test
     script:
+    - node ./index.js &
+    - sleep 2m
     - node ./smoke_test.js
   - stage: Build docker (Dev/Nightly)
     if: tag IS blank
