@@ -120,7 +120,7 @@ async function start(err, blockchain) {
 
     // wallet starts with 1000 ETH and 100000 of each token
     // add 10 ETH liquidity to tokens, set initial exchange rates
-    let amt_eth = parseEther("100")
+    let amt_eth = parseEther("40")
     let amt_token = parseEther("1000") // 1 ETH ~= 10 DATAcoin
     let amt_token2 = parseEther("10000") // 1 ETH ~= 100 OTHERcoin
 

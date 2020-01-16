@@ -10,7 +10,7 @@
   "license": "ISC",
   "dependencies": {
     "ethers": "^4.0.33",
-    "ganache-core": "^2.6.1",
+    "ganache-core": "^2.9.2",
     "node-fetch": "^2.6.0"
   }
 }
