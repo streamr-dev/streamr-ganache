@@ -6,11 +6,11 @@ RUN set -xe && \
     bash --version && ssh -V && npm -v && node -v
 
 COPY ./package.json /streamr-ganache/app/package.json
-COPY ./package-lock.json /streamr-ganache/package-lock.json
+COPY ./package-lock.json /streamr-ganache/app/package-lock.json
 
 WORKDIR /streamr-ganache/app
 
-RUN npm install && \
+RUN npm ci && \
     apk del python build-base git && \
     rm -rf /var/cache/apk/*
 
@@ -21,5 +21,3 @@ ENV EE_URL http://localhost:8081/streamr-core
 ENV NETWORK_ID 1111
 
 ENTRYPOINT ["node", "index.js"]
-
-
