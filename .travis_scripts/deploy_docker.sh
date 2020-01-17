@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 ## Script for logging in to docker service and upload docker imgaes
 docker login -u "$DOCKER_USER" -p "$DOCKER_PASS"
 if [ "$1" == "dev" ]; then
@@ -9,21 +10,21 @@ if [ "$1" == "dev" ]; then
         # 'cron' if the build is triggered by a cron job
         echo "Tag Nightly"
         nightly_build=nightly-$(date '+%Y-%m-%d')
-        docker tag "$OWNER/$IMAGE_NAME:taggit" "$OWNER/$IMAGE_NAME:$nightly_build"
-        docker tag "$OWNER/$IMAGE_NAME:taggit" "$OWNER/$IMAGE_NAME:nightly"
+        docker tag "$OWNER/$IMAGE_NAME:local" "$OWNER/$IMAGE_NAME:$nightly_build"
+        docker tag "$OWNER/$IMAGE_NAME:local" "$OWNER/$IMAGE_NAME:nightly"
         ## Push Nightly
         docker push "$OWNER/$IMAGE_NAME:$nightly_build"
         docker push "$OWNER/$IMAGE_NAME:nightly"
     else
         echo "Tag dev"
-        docker tag "$OWNER/$IMAGE_NAME:taggit" "$OWNER/$IMAGE_NAME:$1"
+        docker tag "$OWNER/$IMAGE_NAME:local" "$OWNER/$IMAGE_NAME:$1"
         ## Push dev
         docker push "$OWNER/$IMAGE_NAME:$1"
     fi
 elif [ "$1" == "production" ]; then
     echo "Tag Production latest/tag"
-    docker tag "$OWNER/$IMAGE_NAME:taggit" "$OWNER/$IMAGE_NAME:$TRAVIS_TAG"
-    docker tag "$OWNER/$IMAGE_NAME:taggit" "$OWNER/$IMAGE_NAME:latest"
+    docker tag "$OWNER/$IMAGE_NAME:local" "$OWNER/$IMAGE_NAME:$TRAVIS_TAG"
+    docker tag "$OWNER/$IMAGE_NAME:local" "$OWNER/$IMAGE_NAME:latest"
     ## Push Production
     docker push "$OWNER/$IMAGE_NAME:$TRAVIS_TAG"
     docker push "$OWNER/$IMAGE_NAME:latest"
