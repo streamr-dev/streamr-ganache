@@ -6,7 +6,7 @@ RUN set -xe && \
     bash --version && ssh -V && npm -v && node -v
 
 COPY ./package.json /streamr-ganache/app/package.json
-COPY ./package-lock.json /streamr-ganache/package-lock.json
+COPY ./package-lock.json /streamr-ganache/app/package-lock.json
 
 WORKDIR /streamr-ganache/app
 
