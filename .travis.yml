@@ -21,17 +21,17 @@ jobs:
     install: true
     script:
     - docker build -t $OWNER/$IMAGE_NAME:local .
-    - bash .travis_scripts/smoke_test.sh
+    - .travis_scripts/smoke_test.sh
     deploy:
     - provider: script
       script:
-      - bash .travis_scripts/deploy_docker.sh dev
+      - .travis_scripts/deploy_docker.sh dev
   - stage: Build docker (Production)
     if: tag IS present
     install: true
     script:
     - docker build -t $OWNER/$IMAGE_NAME:local .
-    - bash .travis_scripts/smoke_test.sh
+    - .travis_scripts/smoke_test.sh
     deploy:
     - provider: script
-      script: bash .travis_scripts/deploy_docker.sh production
+      script: .travis_scripts/deploy_docker.sh production
