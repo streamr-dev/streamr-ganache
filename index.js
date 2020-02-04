@@ -5,7 +5,7 @@ const {
     ContractFactory,
     utils: { computeAddress, parseEther, formatEther },
     Wallet,
-    providers: { Web3Provider }
+    providers: { JsonRpcProvider }
 } = require("ethers")
 const ganache = require("ganache-core")
 
@@ -38,25 +38,11 @@ const testrpcKeys = [
     "0x2c326a4c139eced39709b235fffa1fde7c252f3f7b505103f7b251586c35d543",
 ]
 
-// 10000 keys for running integration tests in parallel, each with its own private key
-const dummyKeys = Array(10000).fill(0).map((x, i) => "0x100000000000000000000000000000000000000000000000000000000000" + String(i).padStart(4, "0"))
-
-// give everyone 100 ETH to play with
-const balance = parseEther("100").toHexString()
-
-const accounts = testrpcKeys.concat(dummyKeys).map(secretKey => ({secretKey, balance}))
-
-log("Starting Ganache")
-const server = ganache.server({
-    accounts,
-    network_id,
-    logger: { log },
-})
-server.listen(port, start)
+start()
 
 async function start(err, blockchain) {
     // wait until ganache is up and ethers.js ready
-    const provider = new Web3Provider(server.provider)
+    const provider = new JsonRpcProvider('http://localhost:8545')
     await provider.getNetwork()
     const wallet = new Wallet(testrpcKeys[0], provider)
 
@@ -163,8 +149,8 @@ async function start(err, blockchain) {
         }
     }
 
-    blockchain.blockTime = 3
-    blockchain.is_mining_on_interval = true
-    blockchain.mineOnInterval()
-    log(`blockTime set to ${blockchain.blockTime} for more realistic simulation (instead of instant mining)`)
+    //blockchain.blockTime = 3
+    //blockchain.is_mining_on_interval = true
+    //blockchain.mineOnInterval()
+    //log(`blockTime set to ${blockchain.blockTime} for more realistic simulation (instead of instant mining)`)
 }
