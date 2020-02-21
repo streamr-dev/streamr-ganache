@@ -11,6 +11,7 @@
   "dependencies": {
     "ethers": "4.0.44",
     "ganache-core": "2.10.1",
-    "node-fetch": "2.6.0"
+    "node-fetch": "2.6.0",
+    "sleep-promise": "^8.0.1"
   }
 }

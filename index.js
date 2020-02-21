@@ -7,6 +7,7 @@ const {
     Wallet,
     providers: { Web3Provider }
 } = require("ethers")
+const sleep = require("sleep-promise")
 const ganache = require("ganache-core")
 
 const TokenJson = require("./TestToken.json")
@@ -147,19 +148,33 @@ async function start(err, blockchain) {
     rate = await othertokenExchange.getTokenToEthInputPrice(ethwei)
     log(`1 OTHERtoken buys ${formatEther(rate)} ETH`)
 
-    log("Getting products from E&E")
-    const products = await (await fetch(`${streamrUrl}/api/v1/products?publicAccess=true`)).json()
+    // The following requires the API to be up and running. Retry the query if it fails.
+    let products
+    for (let attempt=0; attempt<20; attempt++) {
+        try {
+            log("Getting products from E&E")
+            products = await (await fetch(`${streamrUrl}/api/v1/products?publicAccess=true`)).json()
+            break
+        } catch (err) {
+            log(`Got error, API may not be up, retrying after a while: ${err}`)
+            await sleep(5000)
+        }
+    }
 
-    log(`Adding ${products.length} products to Marketplace`)
-    for (const p of products) {
-        // free products not supported
-        if (p.pricePerSecond == 0) { continue }
+    if (!products) {
+        log("ERROR: Unable to retrieve products from the API.")
+    } else {
+        log(`Adding ${products.length} products to Marketplace`)
+        for (const p of products) {
+            // free products not supported
+            if (p.pricePerSecond == 0) { continue }
 
-        const tx = await market.createProduct(`0x${p.id}`, p.name, wallet.address, p.pricePerSecond, p.priceCurrency == "DATA" ? 0 : 1, p.minimumSubscriptionInSeconds)
-        await tx.wait(1)
-        if (p.state == "NOT_DEPLOYED") {
-            const tx2 = await market.deleteProduct(`0x${p.id}`)
-            await tx2.wait(1)
+            const tx = await market.createProduct(`0x${p.id}`, p.name, wallet.address, p.pricePerSecond, p.priceCurrency == "DATA" ? 0 : 1, p.minimumSubscriptionInSeconds)
+            await tx.wait(1)
+            if (p.state == "NOT_DEPLOYED") {
+                const tx2 = await market.deleteProduct(`0x${p.id}`)
+                await tx2.wait(1)
+            }
         }
     }
 
